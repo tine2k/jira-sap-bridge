@@ -1,0 +1,14 @@
+node_modules/
+dist/
+logs/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Real timesheets and captured credentials should never be committed
+data/*.csv
+!data/timesheet.example.csv
+data/*.json
+!data/timesheet.example.json
+playwright/.auth/
