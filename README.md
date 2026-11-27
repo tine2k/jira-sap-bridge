@@ -45,6 +45,37 @@ npm run timesheet -- read --from 2026-11-01 --to 2026-11-30
 npm run timesheet -- read --json
 ```
 
+## Monthly import (preview)
+
+`npm run import` guides you through a monthly Jira export without writing to SAP.
+
+- It proposes the previous month on days 1–10 and the current month on days 11–31; you can choose another month.
+- It searches `JIRA_EXPORT_DIR` (default `~/Downloads`) for `User_ <Name>_<YYYY-MM-DD>_<YYYY-MM-DD>.csv`, where the two dates are the first and last day of the selected month.
+- Exactly one match is used automatically. No match reports the searched directory and expected range. Several matches open a picker.
+
+The preview only reads the export and prints the aggregated hours. It never contacts SAP.
+
+```text
+$ JIRA_EXPORT_DIR=csv-sample npm run import
+
+┌  Jira hours -> SAP preview
+│
+◆  Which month are you filing?
+│  ● November 2026 (2026-11-01 - 2026-11-30)
+│  ○ October 2026
+...
+◇  Which month are you filing?
+│  November 2026
+│
+●  Using User_ Muster-Lang Anna_2026-11-01_2026-11-30.csv
+│
+◇  Read 8 entries.
+🗓  November 2026  2026-11-01 - 2026-11-30
+Hi Anna 👋  (Muster-Lang Anna)  ·  8 entries across 2 days  ·  16 h total
+...
+└  Preview only. Nothing was sent to SAP.
+```
+
 ## Configuration
 
 | Variable | Purpose |
@@ -58,6 +89,7 @@ npm run timesheet -- read --json
 | `ENTRY_PROFILE` | CATS data entry profile (`S4H_EXT`) |
 | `ENTRY_NOTE` | Entry note |
 | `ENTRY_EXTRA_DATA_FIELDS` | JSON assignment fields (PO, WBS, project, …) |
+| `JIRA_EXPORT_DIR` | Directory searched for monthly Jira exports (default `~/Downloads`) |
 
 ## Behaviour
 

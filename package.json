@@ -8,11 +8,16 @@
   },
   "scripts": {
     "timesheet": "tsx src/cli.ts",
+    "import": "tsx src/import/main.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clack/prompts": "^1.9.0",
+    "cli-table3": "^0.6.5",
+    "csv-parse": "^7.0.3",
     "dotenv": "^17.2.3",
+    "picocolors": "^1.1.1",
     "playwright": "^1.65.1"
   },
   "devDependencies": {

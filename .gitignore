@@ -8,6 +8,7 @@ logs/
 .sap-browser-profile/
 
 # Real timesheets and captured credentials should never be committed
+csv-sample/
 data/*.csv
 !data/timesheet.example.csv
 data/*.json
