@@ -12,6 +12,24 @@ import {
 export interface RenderSummaryOptions {
   /** Force color on or off; defaults to following the terminal. */
   color?: boolean;
+  /** Table width in columns; defaults to the terminal width, or 80 when unknown. */
+  width?: number;
+}
+
+const FIXED_COLUMN_WIDTHS = [16, 8, 7];
+const MIN_DESCRIPTION_WIDTH = 30;
+const FALLBACK_WIDTH = 80;
+/** cli-table3 draws one vertical border per column plus one on the outer edge. */
+const TABLE_BORDER_WIDTH = 5;
+
+function descriptionWidth(longest: number, tableWidth: number): number {
+  const fixed = FIXED_COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
+  const available = tableWidth - fixed - TABLE_BORDER_WIDTH;
+  const CELL_PADDING = 2;
+  return Math.max(
+    Math.min(longest + CELL_PADDING, available),
+    Math.min(longest + CELL_PADDING, MIN_DESCRIPTION_WIDTH),
+  );
 }
 
 type Colors = ReturnType<typeof pc.createColors>;
@@ -57,9 +75,19 @@ export function renderSummary(preview: Preview, options: RenderSummaryOptions = 
     )}`,
   ];
 
+  const totalNote = `${dayCount} ${dayWord} with entries`;
+  const longestDescription = Math.max(
+    "Description".length,
+    totalNote.length,
+    ...preview.days.map((day) => day.note.length),
+  );
+  const tableWidth =
+    options.width ??
+    (typeof process.stdout.columns === "number" ? process.stdout.columns : FALLBACK_WIDTH);
+
   const table = new Table({
     head: ["Day", "Hours", "Items", "Description"],
-    colWidths: [16, 8, 7, 60],
+    colWidths: [...FIXED_COLUMN_WIDTHS, descriptionWidth(longestDescription, tableWidth)],
     wordWrap: true,
     style: { head: [], border: [] },
   });
@@ -67,12 +95,7 @@ export function renderSummary(preview: Preview, options: RenderSummaryOptions = 
   for (const day of preview.days) {
     table.push([formatDayLabel(day.date), `${day.hours} h`, String(day.entryCount), day.note]);
   }
-  table.push([
-    "TOTAL",
-    `${preview.totalHours} h`,
-    String(preview.entryCount),
-    `${dayCount} ${dayWord} with entries`,
-  ]);
+  table.push(["TOTAL", `${preview.totalHours} h`, String(preview.entryCount), totalNote]);
 
   const daysByLabel = new Map(preview.days.map((day) => [formatDayLabel(day.date), day]));
   const tableLines = table
