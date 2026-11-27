@@ -3,9 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { ExportDiscoveryError, findExports, listExportMonths } from "../src/import/discover.ts";
-
-const NOVEMBER = { from: "2026-11-01", to: "2026-11-30" };
+import { ExportDiscoveryError, listExports } from "../src/import/discover.ts";
 
 async function tempDir(t: { after: (fn: () => Promise<void>) => void }): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "jira-import-"));
@@ -13,62 +11,43 @@ async function tempDir(t: { after: (fn: () => Promise<void>) => void }): Promise
   return dir;
 }
 
-test("finds the single export matching the month", async (t) => {
+test("lists each matching export with its path and name", async (t) => {
   const dir = await tempDir(t);
   await writeFile(join(dir, "User_ Jane Doe_2026-11-01_2026-11-30.csv"), "");
-  await writeFile(join(dir, "User_ Jane Doe_2026-10-01_2026-10-31.csv"), "");
   await writeFile(join(dir, "notes.csv"), "");
-  await mkdir(join(dir, "User_ Nested_2026-11-01_2026-11-30.csv"));
 
-  const matches = await findExports(dir, NOVEMBER);
-  assert.equal(matches.length, 1);
-  assert.equal(matches[0]?.filename, "User_ Jane Doe_2026-11-01_2026-11-30.csv");
-  assert.equal(matches[0]?.name, "Jane Doe");
-  assert.equal(matches[0]?.path, join(dir, "User_ Jane Doe_2026-11-01_2026-11-30.csv"));
+  const exports = await listExports(dir);
+  assert.equal(exports.length, 1);
+  assert.equal(exports[0]?.filename, "User_ Jane Doe_2026-11-01_2026-11-30.csv");
+  assert.equal(exports[0]?.name, "Jane Doe");
+  assert.equal(exports[0]?.from, "2026-11-01");
+  assert.equal(exports[0]?.path, join(dir, "User_ Jane Doe_2026-11-01_2026-11-30.csv"));
 });
 
-test("returns every match, sorted by filename", async (t) => {
+test("lists exports newest month first, then by filename", async (t) => {
   const dir = await tempDir(t);
+  await writeFile(join(dir, "User_ Zoe_2026-10-01_2026-10-31.csv"), "");
   await writeFile(join(dir, "User_ Zoe_2026-11-01_2026-11-30.csv"), "");
   await writeFile(join(dir, "User_ Adam_2026-11-01_2026-11-30.csv"), "");
 
-  const matches = await findExports(dir, NOVEMBER);
   assert.deepEqual(
-    matches.map((match) => match.name),
-    ["Adam", "Zoe"],
+    (await listExports(dir)).map((file) => file.filename),
+    [
+      "User_ Adam_2026-11-01_2026-11-30.csv",
+      "User_ Zoe_2026-11-01_2026-11-30.csv",
+      "User_ Zoe_2026-10-01_2026-10-31.csv",
+    ],
   );
 });
 
-test("returns an empty list when nothing matches", async (t) => {
+test("lists every export that covers the same month", async (t) => {
   const dir = await tempDir(t);
-  await writeFile(join(dir, "User_ Jane_2026-12-01_2026-12-31.csv"), "");
-  assert.deepEqual(await findExports(dir, NOVEMBER), []);
-});
+  await writeFile(join(dir, "User_ Adam_2026-11-01_2026-11-30.csv"), "");
+  await writeFile(join(dir, "User_ Zoe_2026-11-01_2026-11-30.csv"), "");
 
-test("reports a missing export directory by name", async () => {
-  const dir = join(tmpdir(), `missing-${Date.now()}`);
-  await assert.rejects(findExports(dir, NOVEMBER), (error: unknown) => {
-    assert.ok(error instanceof ExportDiscoveryError);
-    assert.equal(error.directory, dir);
-    assert.match(error.message, /Export directory not found/);
-    return true;
-  });
-});
-
-test("lists only the full calendar months that have an export, newest first", async (t) => {
-  const dir = await tempDir(t);
-  await writeFile(join(dir, "User_ Jane Doe_2026-09-01_2026-09-30.csv"), "");
-  await writeFile(join(dir, "User_ Jane Doe_2026-11-01_2026-11-30.csv"), "");
-  await writeFile(join(dir, "User_ Jane Doe_2026-10-01_2026-10-31.csv"), "");
-
-  const months = await listExportMonths(dir);
   assert.deepEqual(
-    months.map((month) => [month.year, month.month]),
-    [
-      [2026, 11],
-      [2026, 10],
-      [2026, 9],
-    ],
+    (await listExports(dir)).map((file) => file.name),
+    ["Adam", "Zoe"],
   );
 });
 
@@ -79,8 +58,8 @@ test("ignores exports whose dates do not span one full calendar month", async (t
   await writeFile(join(dir, "User_ Jane_2026-10-01_2026-11-30.csv"), "");
   await writeFile(join(dir, "User_ Jane_2026-02-01_2026-02-28.csv"), "");
   assert.deepEqual(
-    (await listExportMonths(dir)).map((month) => month.from),
-    ["2026-02-01"],
+    (await listExports(dir)).map((file) => file.filename),
+    ["User_ Jane_2026-02-01_2026-02-28.csv"],
   );
 });
 
@@ -89,20 +68,20 @@ test("ignores files that do not follow the export pattern and directories", asyn
   await writeFile(join(dir, "notes.csv"), "");
   await writeFile(join(dir, "timesheet_2026-11-01_2026-11-30.txt"), "");
   await mkdir(join(dir, "User_ Nested_2026-11-01_2026-11-30.csv"));
-  assert.deepEqual(await listExportMonths(dir), []);
+  assert.deepEqual(await listExports(dir), []);
 });
 
-test("lists one month once even when several exports cover it", async (t) => {
+test("returns an empty list when the directory has no exports", async (t) => {
   const dir = await tempDir(t);
-  await writeFile(join(dir, "User_ Adam_2026-11-01_2026-11-30.csv"), "");
-  await writeFile(join(dir, "User_ Zoe_2026-11-01_2026-11-30.csv"), "");
-  assert.deepEqual(
-    (await listExportMonths(dir)).map((month) => month.from),
-    ["2026-11-01"],
-  );
+  assert.deepEqual(await listExports(dir), []);
 });
 
-test("reports a missing directory when listing months", async () => {
+test("reports a missing export directory by name", async () => {
   const dir = join(tmpdir(), `missing-${Date.now()}`);
-  await assert.rejects(listExportMonths(dir), ExportDiscoveryError);
+  await assert.rejects(listExports(dir), (error: unknown) => {
+    assert.ok(error instanceof ExportDiscoveryError);
+    assert.equal(error.directory, dir);
+    assert.match(error.message, /Export directory not found/);
+    return true;
+  });
 });

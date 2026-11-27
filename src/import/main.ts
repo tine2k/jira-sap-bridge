@@ -4,19 +4,8 @@ import { pathToFileURL } from "node:url";
 import { ExportParseError, readExport } from "../jira/csv.ts";
 import { buildPreview, formatMonthLabel } from "../jira/preview.ts";
 import { resolveExportDir } from "./config.ts";
-import {
-  ExportDiscoveryError,
-  findExports,
-  listExportMonths,
-  type DiscoveredExport,
-} from "./discover.ts";
-import {
-  monthRange,
-  pickDefaultMonth,
-  type CalendarDay,
-  type MonthRange,
-  type YearMonth,
-} from "./month.ts";
+import { ExportDiscoveryError, listExports, type DiscoveredExport } from "./discover.ts";
+import { monthRange, pickDefaultMonth, type CalendarDay, type YearMonth } from "./month.ts";
 import { renderSummary } from "./summary.ts";
 
 const EXIT_OK = 0;
@@ -35,89 +24,69 @@ export function todayFromDate(date: Date): CalendarDay {
   return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
 }
 
-export function monthOptions(
-  offered: ReadonlyArray<MonthRange>,
-): Array<{ value: string; label: string; hint: string }> {
-  return offered.map((month) => ({
-    value: monthValue(month),
-    label: formatMonthLabel(month),
-    hint: `${month.from} - ${month.to}`,
-  }));
+function yearMonthOf(file: DiscoveredExport): YearMonth {
+  return { year: Number(file.from.slice(0, 4)), month: Number(file.from.slice(5, 7)) };
 }
 
-async function chooseMonth(
-  offered: ReadonlyArray<MonthRange>,
+export type Ui = Pick<typeof p, "intro" | "outro" | "cancel" | "select" | "isCancel" | "spinner" | "log">;
+
+async function chooseExport(
+  offered: ReadonlyArray<DiscoveredExport>,
   today: CalendarDay,
-): Promise<YearMonth | null> {
-  const initial = pickDefaultMonth(offered, today) ?? offered[0];
-  const selected = await p.select({
-    message: "Which month are you filing?",
-    options: monthOptions(offered),
-    initialValue: initial === undefined ? undefined : monthValue(initial),
-  });
-
-  if (p.isCancel(selected)) {
-    return null;
-  }
-
-  return offered.find((month) => monthValue(month) === String(selected)) ?? null;
-}
-
-async function chooseFile(matches: DiscoveredExport[]): Promise<DiscoveredExport | null> {
-  const first = matches[0];
-  if (matches.length === 1 && first !== undefined) {
-    p.log.info(`Using ${first.filename}`);
-    return first;
-  }
-
-  const selected = await p.select({
-    message: "Several exports match this month. Which one?",
-    options: matches.map((match) => ({
-      value: match.path,
-      label: match.filename,
-      hint: match.name,
+  ui: Ui,
+): Promise<DiscoveredExport | null> {
+  const preferred = pickDefaultMonth(offered.map(yearMonthOf), today);
+  const initial =
+    offered.find(
+      (file) => preferred !== null && monthValue(yearMonthOf(file)) === monthValue(preferred),
+    ) ?? offered[0];
+  const selected = await ui.select({
+    message: "Which export are you filing?",
+    options: offered.map((file) => ({
+      value: file.path,
+      label: `${formatMonthLabel(yearMonthOf(file))} (${file.filename})`,
     })),
+    initialValue: initial?.path,
   });
 
-  if (p.isCancel(selected)) {
+  if (ui.isCancel(selected)) {
     return null;
   }
-  return matches.find((match) => match.path === selected) ?? null;
+
+  return offered.find((file) => file.path === String(selected)) ?? null;
 }
 
-async function runImport(today: CalendarDay): Promise<number> {
-  p.intro("Jira hours -> SAP preview");
+export async function runImport(
+  today: CalendarDay,
+  directory: string,
+  ui: Ui = p,
+  write: (text: string) => void = (text) => process.stdout.write(text),
+): Promise<number> {
+  ui.intro("Jira hours -> SAP preview");
 
-  const directory = resolveExportDir(process.env);
-  const offered = await listExportMonths(directory);
+  const offered = await listExports(directory);
 
   if (offered.length === 0) {
-    p.log.error(`No Jira exports found in ${directory}.`);
-    p.log.info(
+    ui.log.error(`No Jira exports found in ${directory}.`);
+    ui.log.info(
       "Download the monthly export from Tempo/Jira and run the import again. " +
         "The file name must look like User_ <Name>_2026-11-01_2026-11-30.csv.",
     );
-    p.outro("Nothing to preview.");
+    ui.outro("Nothing to preview.");
     return EXIT_ERROR;
   }
 
-  const month = await chooseMonth(offered, today);
-  if (month === null) {
-    p.cancel("Import cancelled.");
-    return EXIT_CANCEL;
-  }
-
-  const range = monthRange(month.year, month.month);
-  const matches = await findExports(directory, range);
-  const file = await chooseFile(matches);
+  const file = await chooseExport(offered, today, ui);
   if (file === null) {
-    p.cancel("Import cancelled.");
+    ui.cancel("Import cancelled.");
     return EXIT_CANCEL;
   }
 
-  const spinner = p.spinner();
+  const month = yearMonthOf(file);
+  const range = monthRange(month.year, month.month);
+  const spinner = ui.spinner();
   spinner.start("Reading the export");
-  const result = await readExport(file.path, { year: month.year, month: month.month });
+  const result = await readExport(file.path, month);
   spinner.stop(`Read ${result.rows.length} entries.`);
 
   const preview = buildPreview({
@@ -127,8 +96,8 @@ async function runImport(today: CalendarDay): Promise<number> {
     rowWarnings: result.warnings,
   });
 
-  process.stdout.write(`\n${renderSummary(preview, { color: Boolean(process.stdout.isTTY) })}\n\n`);
-  p.outro("Preview only. Nothing was sent to SAP.");
+  write(`\n${renderSummary(preview, { color: Boolean(process.stdout.isTTY) })}\n\n`);
+  ui.outro("Preview only. Nothing was sent to SAP.");
   return EXIT_OK;
 }
 
@@ -141,7 +110,7 @@ export async function main(): Promise<number> {
   }
 
   try {
-    return await runImport(todayFromDate(new Date()));
+    return await runImport(todayFromDate(new Date()), resolveExportDir(process.env));
   } catch (error) {
     if (error instanceof ExportDiscoveryError || error instanceof ExportParseError) {
       p.log.error(error.message);

@@ -50,9 +50,9 @@ npm run timesheet -- read --json
 `npm run import` guides you through a monthly Jira export without writing to SAP.
 
 - It scans `JIRA_EXPORT_DIR` (default `~/Downloads`) first for `User_ <Name>_<YYYY-MM-DD>_<YYYY-MM-DD>.csv` files, where the two dates are the first and last day of one calendar month.
-- Only months with a matching export are offered. The previous month is proposed on days 1–10 and the current month on days 11–31, if they have an export; otherwise the newest exported month is proposed.
-- If no matching export is found, it reports the searched directory and asks you to download the monthly export from Tempo/Jira.
-- Exactly one match for the chosen month is used automatically. Several matches open a picker.
+- The picker lists each export found in the directory, newest month first, as the month name followed by the filename in brackets. Only files that match the pattern and span one full calendar month are listed.
+- The file for the previous month is preselected on days 1–10 and the file for the current month on days 11–31, if they exist; otherwise the newest file is preselected.
+- If no matching export is found, it reports the searched directory, asks you to download the monthly export from Tempo/Jira, and exits without showing a picker.
 
 The preview only reads the export and prints the aggregated hours. It never contacts SAP.
 
@@ -61,14 +61,12 @@ $ JIRA_EXPORT_DIR=csv-sample npm run import
 
 ┌  Jira hours -> SAP preview
 │
-◆  Which month are you filing?
-│  ● November 2026 (2026-11-01 - 2026-11-30)
-│  ○ October 2026
+◆  Which export are you filing?
+│  ● November 2026 (User_ Muster-Lang Anna_2026-11-01_2026-11-30.csv)
+│  ○ October 2026 (User_ Muster-Lang Anna_2026-10-01_2026-10-31.csv)
 ...
-◇  Which month are you filing?
-│  November 2026
-│
-●  Using User_ Muster-Lang Anna_2026-11-01_2026-11-30.csv
+◇  Which export are you filing?
+│  November 2026 (User_ Muster-Lang Anna_2026-11-01_2026-11-30.csv)
 │
 ◇  Read 8 entries.
 🗓  November 2026  2026-11-01 - 2026-11-30

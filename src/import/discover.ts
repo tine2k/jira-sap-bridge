@@ -37,52 +37,27 @@ function fullMonthOf(parsed: ExportFilename): MonthRange | null {
 }
 
 /**
- * Lists the distinct calendar months that have a full-month export in `dir`,
- * newest first. Files that do not match the export pattern, or whose dates do
- * not span exactly one calendar month, are ignored.
+ * Lists the CSV exports in `dir` that span exactly one calendar month, newest
+ * month first and then by filename. Files that do not match the export
+ * pattern, or whose dates do not span exactly one calendar month, are ignored.
  */
-export async function listExportMonths(dir: string): Promise<MonthRange[]> {
+export async function listExports(dir: string): Promise<DiscoveredExport[]> {
   const entries = await readDirectory(dir);
-  const months = new Map<string, MonthRange>();
 
+  const exports: DiscoveredExport[] = [];
   for (const entry of entries) {
     if (!entry.isFile()) {
       continue;
     }
     const parsed = parseExportFilename(entry.name);
-    if (parsed === null || months.has(parsed.from)) {
+    if (parsed === null || fullMonthOf(parsed) === null) {
       continue;
     }
-    const range = fullMonthOf(parsed);
-    if (range !== null) {
-      months.set(parsed.from, range);
-    }
+    exports.push({ ...parsed, path: join(dir, entry.name), filename: entry.name });
   }
 
-  return [...months.values()].sort((left, right) => right.from.localeCompare(left.from));
-}
-
-/**
- * Lists CSV exports in `dir` whose filename date range exactly matches the
- * selected month. Never guesses: callers decide what to do with 0 or >1.
- */
-export async function findExports(
-  dir: string,
-  range: Pick<MonthRange, "from" | "to">,
-): Promise<DiscoveredExport[]> {
-  const entries = await readDirectory(dir);
-
-  const matches: DiscoveredExport[] = [];
-  for (const entry of entries) {
-    if (!entry.isFile()) {
-      continue;
-    }
-    const parsed = parseExportFilename(entry.name);
-    if (parsed === null || parsed.from !== range.from || parsed.to !== range.to) {
-      continue;
-    }
-    matches.push({ ...parsed, path: join(dir, entry.name), filename: entry.name });
-  }
-
-  return matches.sort((left, right) => left.filename.localeCompare(right.filename));
+  return exports.sort(
+    (left, right) =>
+      right.from.localeCompare(left.from) || left.filename.localeCompare(right.filename),
+  );
 }
