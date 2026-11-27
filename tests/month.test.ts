@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { defaultMonth, monthRange, previousMonth } from "../src/import/month.ts";
+import { defaultMonth, monthRange, pickDefaultMonth, previousMonth } from "../src/import/month.ts";
 
 test("defaults to the previous month on days 1-10", () => {
   assert.deepEqual(defaultMonth({ year: 2026, month: 11, day: 1 }), { year: 2026, month: 10 });
@@ -32,6 +32,36 @@ test("builds an inclusive month range", () => {
   });
   assert.equal(monthRange(2028, 2).to, "2028-02-29");
   assert.equal(monthRange(2026, 2).to, "2026-02-28");
+});
+
+test("proposes the date-based default when it has an export", () => {
+  const offered = [
+    { year: 2026, month: 11 },
+    { year: 2026, month: 10 },
+  ];
+  assert.deepEqual(pickDefaultMonth(offered, { year: 2026, month: 11, day: 20 }), {
+    year: 2026,
+    month: 11,
+  });
+  assert.deepEqual(pickDefaultMonth(offered, { year: 2026, month: 11, day: 3 }), {
+    year: 2026,
+    month: 10,
+  });
+});
+
+test("falls back to the newest exported month when the default has no export", () => {
+  const offered = [
+    { year: 2026, month: 9 },
+    { year: 2026, month: 8 },
+  ];
+  assert.deepEqual(pickDefaultMonth(offered, { year: 2026, month: 11, day: 20 }), {
+    year: 2026,
+    month: 9,
+  });
+});
+
+test("proposes nothing when no month is offered", () => {
+  assert.equal(pickDefaultMonth([], { year: 2026, month: 11, day: 20 }), null);
 });
 
 test("rejects invalid months and days", () => {

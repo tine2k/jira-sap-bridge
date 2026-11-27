@@ -49,9 +49,10 @@ npm run timesheet -- read --json
 
 `npm run import` guides you through a monthly Jira export without writing to SAP.
 
-- It proposes the previous month on days 1–10 and the current month on days 11–31; you can choose another month.
-- It searches `JIRA_EXPORT_DIR` (default `~/Downloads`) for `User_ <Name>_<YYYY-MM-DD>_<YYYY-MM-DD>.csv`, where the two dates are the first and last day of the selected month.
-- Exactly one match is used automatically. No match reports the searched directory and expected range. Several matches open a picker.
+- It scans `JIRA_EXPORT_DIR` (default `~/Downloads`) first for `User_ <Name>_<YYYY-MM-DD>_<YYYY-MM-DD>.csv` files, where the two dates are the first and last day of one calendar month.
+- Only months with a matching export are offered. The previous month is proposed on days 1–10 and the current month on days 11–31, if they have an export; otherwise the newest exported month is proposed.
+- If no matching export is found, it reports the searched directory and asks you to download the monthly export from Tempo/Jira.
+- Exactly one match for the chosen month is used automatically. Several matches open a picker.
 
 The preview only reads the export and prints the aggregated hours. It never contacts SAP.
 

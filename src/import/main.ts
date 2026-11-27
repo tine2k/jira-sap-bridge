@@ -4,12 +4,17 @@ import { pathToFileURL } from "node:url";
 import { ExportParseError, readExport } from "../jira/csv.ts";
 import { buildPreview, formatMonthLabel } from "../jira/preview.ts";
 import { resolveExportDir } from "./config.ts";
-import { ExportDiscoveryError, findExports, type DiscoveredExport } from "./discover.ts";
 import {
-  defaultMonth,
+  ExportDiscoveryError,
+  findExports,
+  listExportMonths,
+  type DiscoveredExport,
+} from "./discover.ts";
+import {
   monthRange,
-  previousMonth,
+  pickDefaultMonth,
   type CalendarDay,
+  type MonthRange,
   type YearMonth,
 } from "./month.ts";
 import { renderSummary } from "./summary.ts";
@@ -26,66 +31,36 @@ export function monthValue({ year, month }: YearMonth): string {
   return `${year}-${pad2(month)}`;
 }
 
-export function parseMonthValue(value: string): YearMonth | null {
-  const match = /^(\d{4})-(\d{2})$/.exec(value.trim());
-  if (match === null) {
-    return null;
-  }
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  if (month < 1 || month > 12) {
-    return null;
-  }
-  return { year, month };
-}
-
 export function todayFromDate(date: Date): CalendarDay {
   return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
 }
 
-export function monthOptions(today: CalendarDay): Array<{ value: string; label: string; hint: string }> {
-  const options: Array<{ value: string; label: string; hint: string }> = [];
-  let cursor: YearMonth = { year: today.year, month: today.month };
-
-  for (let index = 0; index < 12; index += 1) {
-    const range = monthRange(cursor.year, cursor.month);
-    options.push({
-      value: monthValue(cursor),
-      label: formatMonthLabel(cursor),
-      hint: `${range.from} - ${range.to}`,
-    });
-    cursor = previousMonth(cursor);
-  }
-
-  options.push({ value: "other", label: "Other month...", hint: "type YYYY-MM" });
-  return options;
+export function monthOptions(
+  offered: ReadonlyArray<MonthRange>,
+): Array<{ value: string; label: string; hint: string }> {
+  return offered.map((month) => ({
+    value: monthValue(month),
+    label: formatMonthLabel(month),
+    hint: `${month.from} - ${month.to}`,
+  }));
 }
 
-async function chooseMonth(today: CalendarDay): Promise<YearMonth | null> {
+async function chooseMonth(
+  offered: ReadonlyArray<MonthRange>,
+  today: CalendarDay,
+): Promise<YearMonth | null> {
+  const initial = pickDefaultMonth(offered, today) ?? offered[0];
   const selected = await p.select({
     message: "Which month are you filing?",
-    options: monthOptions(today),
-    initialValue: monthValue(defaultMonth(today)),
+    options: monthOptions(offered),
+    initialValue: initial === undefined ? undefined : monthValue(initial),
   });
 
   if (p.isCancel(selected)) {
     return null;
   }
 
-  if (selected === "other") {
-    const typed = await p.text({
-      message: "Enter month (YYYY-MM):",
-      placeholder: monthValue(today),
-      validate: (value) =>
-        parseMonthValue(value ?? "") === null ? "Use YYYY-MM, for example 2026-11" : undefined,
-    });
-    if (p.isCancel(typed)) {
-      return null;
-    }
-    return parseMonthValue(typed);
-  }
-
-  return parseMonthValue(String(selected));
+  return offered.find((month) => monthValue(month) === String(selected)) ?? null;
 }
 
 async function chooseFile(matches: DiscoveredExport[]): Promise<DiscoveredExport | null> {
@@ -113,25 +88,27 @@ async function chooseFile(matches: DiscoveredExport[]): Promise<DiscoveredExport
 async function runImport(today: CalendarDay): Promise<number> {
   p.intro("Jira hours -> SAP preview");
 
-  const month = await chooseMonth(today);
+  const directory = resolveExportDir(process.env);
+  const offered = await listExportMonths(directory);
+
+  if (offered.length === 0) {
+    p.log.error(`No Jira exports found in ${directory}.`);
+    p.log.info(
+      "Download the monthly export from Tempo/Jira and run the import again. " +
+        "The file name must look like User_ <Name>_2026-11-01_2026-11-30.csv.",
+    );
+    p.outro("Nothing to preview.");
+    return EXIT_ERROR;
+  }
+
+  const month = await chooseMonth(offered, today);
   if (month === null) {
     p.cancel("Import cancelled.");
     return EXIT_CANCEL;
   }
 
   const range = monthRange(month.year, month.month);
-  const directory = resolveExportDir(process.env);
   const matches = await findExports(directory, range);
-
-  if (matches.length === 0) {
-    p.log.error(
-      `No export for ${formatMonthLabel(range)} in ${directory}. ` +
-        `Expected a file ending with _${range.from}_${range.to}.csv.`,
-    );
-    p.outro("Nothing to preview.");
-    return EXIT_ERROR;
-  }
-
   const file = await chooseFile(matches);
   if (file === null) {
     p.cancel("Import cancelled.");

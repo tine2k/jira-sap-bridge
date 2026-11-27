@@ -1,0 +1,68 @@
+## MODIFIED Requirements
+
+### Requirement: Reporting month selection
+
+The tool SHALL begin by searching the export directory for matching exports and SHALL offer as reporting months only those calendar months for which a matching export exists. It SHALL propose a default month: the previous month on calendar days 1–10 and the current month on days 11–31, when that month has a matching export; otherwise the most recent month that has a matching export. The user SHALL be able to choose a different offered month before continuing.
+
+#### Scenario: Default at the start of a month
+
+- **WHEN** the tool starts on a calendar day between 1 and 10 and the previous month has a matching export
+- **THEN** the previous month is proposed as the default reporting month
+
+#### Scenario: Default later in a month
+
+- **WHEN** the tool starts on a calendar day between 11 and 31 and the current month has a matching export
+- **THEN** the current month is proposed as the default reporting month
+
+#### Scenario: Date-based default has no export
+
+- **WHEN** the date-based default month has no matching export but other months do
+- **THEN** the most recent month with a matching export is proposed as the default
+
+#### Scenario: Only exported months are offered
+
+- **WHEN** exports exist for two months in the export directory
+- **THEN** the month choice lists exactly those two months and no others
+
+#### Scenario: User chooses another month
+
+- **WHEN** the user selects an offered month other than the proposed default
+- **THEN** discovery and parsing use the first through last calendar day of the chosen month
+
+### Requirement: Export file discovery
+
+The tool SHALL search the configured export directory for CSV files named `User_ <Name>_<YYYY-MM-DD>_<YYYY-MM-DD>.csv`, where the two dates are the first and last calendar day of the same month. Files that do not match this pattern SHALL be ignored. The tool SHALL derive the set of offered months from the matching files before asking the user for a month.
+
+#### Scenario: Exactly one export matches
+
+- **WHEN** exactly one file in the directory matches the selected month's date range
+- **THEN** the tool selects that file and continues without asking the user to choose
+
+#### Scenario: No export matches
+
+- **WHEN** no file in the export directory matches the pattern
+- **THEN** the tool reports the searched directory, asks the user to download the monthly export from Tempo/Jira, and produces no preview
+
+#### Scenario: Several exports match
+
+- **WHEN** more than one file matches the selected month's date range
+- **THEN** the tool lists the candidates and requires an explicit selection before continuing
+
+#### Scenario: Non-matching files are ignored
+
+- **WHEN** the directory contains files whose names do not follow the pattern or whose dates do not span one full calendar month
+- **THEN** those files are not offered as months or candidates
+
+### Requirement: Export directory configuration
+
+The tool SHALL read the export directory from `JIRA_EXPORT_DIR`, SHALL default to the user's Downloads folder, and SHALL expand a leading `~`. Discovery SHALL run against this directory before any month is chosen.
+
+#### Scenario: Default directory
+
+- **WHEN** `JIRA_EXPORT_DIR` is unset
+- **THEN** the tool searches the user's Downloads folder first
+
+#### Scenario: Configured directory
+
+- **WHEN** `JIRA_EXPORT_DIR` is set to another directory
+- **THEN** the tool searches only that directory

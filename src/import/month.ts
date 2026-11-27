@@ -57,6 +57,22 @@ export function defaultMonth(
     : { year: today.year, month: today.month };
 }
 
+/**
+ * Picks the default among months that have an export: the date-based default
+ * when it is offered, otherwise the newest offered month. Returns null when
+ * nothing is offered. `offered` is expected newest first.
+ */
+export function pickDefaultMonth(
+  offered: ReadonlyArray<YearMonth>,
+  today: CalendarDay,
+): YearMonth | null {
+  const preferred = defaultMonth(today);
+  const match = offered.find(
+    (month) => month.year === preferred.year && month.month === preferred.month,
+  );
+  return match ?? offered[0] ?? null;
+}
+
 /** First and last calendar day of a month, as YYYY-MM-DD strings. */
 export function monthRange(year: number, month: number): MonthRange {
   assertMonth(month);
