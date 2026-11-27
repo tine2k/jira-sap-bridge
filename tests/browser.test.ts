@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildCookieHeader } from "../src/sap/browser.js";
+import { buildCookieHeader } from "../src/sap/browser.ts";
 
 test("builds a cookie header from browser cookies", () => {
   assert.equal(

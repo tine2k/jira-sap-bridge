@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildPreview } from "../src/jira/preview.js";
-import type { RawRow } from "../src/jira/types.js";
-import { renderSummary } from "../src/import/summary.js";
+import { buildPreview } from "../src/jira/preview.ts";
+import type { RawRow } from "../src/jira/types.ts";
+import { renderSummary } from "../src/import/summary.ts";
 
 const RANGE = { year: 2026, month: 11, from: "2026-11-01", to: "2026-11-30" };
 const ANSI = /\u001b\[[0-9;]*m/g;

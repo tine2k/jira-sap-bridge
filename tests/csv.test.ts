@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { ExportParseError, parseExport, readExport } from "../src/jira/csv.js";
+import { ExportParseError, parseExport, readExport } from "../src/jira/csv.ts";
 
 const NOVEMBER = { year: 2026, month: 11 };
 const FIXTURE = fileURLToPath(new URL("../data/timesheet.example.csv", import.meta.url));

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { firstNameFromName, parseExportFilename } from "../src/jira/filename.js";
+import { firstNameFromName, parseExportFilename } from "../src/jira/filename.ts";
 
 test("parses a redacted sample export filename", () => {
   const parsed = parseExportFilename(

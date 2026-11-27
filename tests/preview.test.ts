@@ -5,8 +5,8 @@ import {
   formatDayLabel,
   formatMonthLabel,
   isWeekend,
-} from "../src/jira/preview.js";
-import type { RawRow } from "../src/jira/types.js";
+} from "../src/jira/preview.ts";
+import type { RawRow } from "../src/jira/types.ts";
 
 const RANGE = { year: 2026, month: 11, from: "2026-11-01", to: "2026-11-30" };
 

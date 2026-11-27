@@ -1,5 +1,5 @@
-import type { AddEntryConfig } from "../config.js";
-import { formatEntryDate } from "../date.js";
+import type { AddEntryConfig } from "../config.ts";
+import { formatEntryDate } from "../date.ts";
 
 /**
  * Payload shape used by the Fiori time sheet (HCM_CATS_MANAG_V1).

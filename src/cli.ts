@@ -1,9 +1,9 @@
 import "dotenv/config";
-import { ConfigError, loadConfig, loadConnectionConfig, loadEmployeeConfig, type ConnectionConfig } from "./config.js";
-import { enumerateDates, parseCalendarDate, parseODataDate, validateCalendarDate } from "./date.js";
-import { BrowserAuthError, obtainSessionCookie } from "./sap/browser.js";
-import { SapClient, SapRequestError, SapTransportError, type TimeEntry } from "./sap/client.js";
-import { buildEntryPayload } from "./sap/entry.js";
+import { ConfigError, loadConfig, loadConnectionConfig, loadEmployeeConfig, type ConnectionConfig } from "./config.ts";
+import { enumerateDates, parseCalendarDate, parseODataDate, validateCalendarDate } from "./date.ts";
+import { BrowserAuthError, obtainSessionCookie } from "./sap/browser.ts";
+import { SapClient, SapRequestError, SapTransportError, type TimeEntry } from "./sap/client.ts";
+import { buildEntryPayload } from "./sap/entry.ts";
 
 const USAGE = `Usage: npm run timesheet -- <command>
 

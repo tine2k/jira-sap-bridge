@@ -1,4 +1,4 @@
-import { validateCalendarDate } from "./date";
+import { validateCalendarDate } from "./date.ts";
 
 export type Env = Record<string, string | undefined>;
 

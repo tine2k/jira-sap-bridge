@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import type { ConnectionConfig } from "../config.js";
+import type { ConnectionConfig } from "../config.ts";
 
 export class BrowserAuthError extends Error {
   constructor(message: string) {

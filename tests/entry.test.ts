@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildEntryPayload, DATA_FIELD_PROPERTIES, ENTRY_PROPERTIES } from "../src/sap/entry.js";
-import { addConfig } from "./helpers.js";
+import { buildEntryPayload, DATA_FIELD_PROPERTIES, ENTRY_PROPERTIES } from "../src/sap/entry.ts";
+import { addConfig } from "./helpers.ts";
 
 test("builds the entry payload for a known configuration", () => {
   const payload = buildEntryPayload(addConfig());

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { ExportDiscoveryError, findExports } from "../src/import/discover.js";
+import { ExportDiscoveryError, findExports } from "../src/import/discover.ts";
 
 const NOVEMBER = { from: "2026-11-01", to: "2026-11-30" };
 

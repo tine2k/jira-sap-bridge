@@ -1,4 +1,4 @@
-import type { RawRow } from "./types.js";
+import type { RawRow } from "./types.ts";
 
 export const NOTE_MAX_LENGTH = 255;
 const ELLIPSIS = "...";

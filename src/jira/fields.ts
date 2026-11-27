@@ -1,4 +1,4 @@
-import { parseCalendarDate } from "../date.js";
+import { parseCalendarDate } from "../date.ts";
 
 export interface SelectedMonth {
   year: number;

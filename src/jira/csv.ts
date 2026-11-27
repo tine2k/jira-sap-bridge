@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { parse } from "csv-parse/sync";
-import { parseHours, parseWorkDate, type SelectedMonth } from "./fields.js";
-import type { ExportReadResult, RawRow, RowWarning } from "./types.js";
+import { parseHours, parseWorkDate, type SelectedMonth } from "./fields.ts";
+import type { ExportReadResult, RawRow, RowWarning } from "./types.ts";
 
 const REQUIRED_COLUMNS = ["Issue Key", "Hours", "Work Date"] as const;
 

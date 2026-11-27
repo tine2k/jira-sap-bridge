@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Env } from "../config.js";
+import type { Env } from "../config.ts";
 
 export const DEFAULT_EXPORT_DIR_NAME = "Downloads";
 

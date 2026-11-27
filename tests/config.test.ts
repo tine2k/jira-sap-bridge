@@ -6,7 +6,7 @@ import {
   loadConfig,
   loadConnectionConfig,
   loadEmployeeConfig,
-} from "../src/config.js";
+} from "../src/config.ts";
 
 const complete: Record<string, string> = {
   S4_HOST: "https://tenant.example",

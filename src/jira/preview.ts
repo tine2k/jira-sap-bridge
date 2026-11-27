@@ -1,9 +1,9 @@
-import { parseCalendarDate } from "../date.js";
-import { aggregateDays, type DayEntry } from "./aggregate.js";
-import { parsePeriod } from "./fields.js";
-import { firstNameFromName } from "./filename.js";
-import type { RawRow, RowWarning } from "./types.js";
-import type { MonthRange } from "../import/month.js";
+import { parseCalendarDate } from "../date.ts";
+import { aggregateDays, type DayEntry } from "./aggregate.ts";
+import { parsePeriod } from "./fields.ts";
+import { firstNameFromName } from "./filename.ts";
+import type { RawRow, RowWarning } from "./types.ts";
+import type { MonthRange } from "../import/month.ts";
 
 export type PreviewWarningKind =
   | "row"

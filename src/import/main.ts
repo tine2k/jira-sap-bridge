@@ -1,18 +1,18 @@
 import "dotenv/config";
 import * as p from "@clack/prompts";
 import { pathToFileURL } from "node:url";
-import { ExportParseError, readExport } from "../jira/csv.js";
-import { buildPreview, formatMonthLabel } from "../jira/preview.js";
-import { resolveExportDir } from "./config.js";
-import { ExportDiscoveryError, findExports, type DiscoveredExport } from "./discover.js";
+import { ExportParseError, readExport } from "../jira/csv.ts";
+import { buildPreview, formatMonthLabel } from "../jira/preview.ts";
+import { resolveExportDir } from "./config.ts";
+import { ExportDiscoveryError, findExports, type DiscoveredExport } from "./discover.ts";
 import {
   defaultMonth,
   monthRange,
   previousMonth,
   type CalendarDay,
   type YearMonth,
-} from "./month.js";
-import { renderSummary } from "./summary.js";
+} from "./month.ts";
+import { renderSummary } from "./summary.ts";
 
 const EXIT_OK = 0;
 const EXIT_ERROR = 1;

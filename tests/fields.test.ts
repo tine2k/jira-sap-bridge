@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseHours, parsePeriod, parseWorkDate } from "../src/jira/fields.js";
+import { parseHours, parsePeriod, parseWorkDate } from "../src/jira/fields.ts";
 
 const NOVEMBER = { year: 2026, month: 11 };
 

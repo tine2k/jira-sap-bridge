@@ -6,7 +6,7 @@ import {
   parseCalendarDate,
   parseODataDate,
   validateCalendarDate,
-} from "../src/date.js";
+} from "../src/date.ts";
 
 test("parses valid calendar dates", () => {
   assert.deepEqual(parseCalendarDate("2026-11-24"), { year: 2026, month: 11, day: 24 });

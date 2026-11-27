@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { aggregateDays, formatHours, NOTE_MAX_LENGTH } from "../src/jira/aggregate.js";
-import type { RawRow } from "../src/jira/types.js";
+import { aggregateDays, formatHours, NOTE_MAX_LENGTH } from "../src/jira/aggregate.ts";
+import type { RawRow } from "../src/jira/types.ts";
 
 function row(overrides: Partial<RawRow> = {}): RawRow {
   return {

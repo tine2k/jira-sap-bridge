@@ -1,12 +1,12 @@
 import Table from "cli-table3";
 import pc from "picocolors";
-import type { DayEntry } from "../jira/aggregate.js";
+import type { DayEntry } from "../jira/aggregate.ts";
 import {
   formatDayLabel,
   formatMonthLabel,
   isWeekend,
   type Preview,
-} from "../jira/preview.js";
+} from "../jira/preview.ts";
 
 export interface RenderSummaryOptions {
   /** Force color on or off; defaults to following the terminal. */

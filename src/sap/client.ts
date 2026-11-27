@@ -1,4 +1,4 @@
-import type { ConnectionConfig } from "../config.js";
+import type { ConnectionConfig } from "../config.ts";
 
 const ENTITY_SET = "TimeEntryCollection";
 
@@ -37,10 +37,13 @@ export interface TimeEntry {
 }
 
 export class SapClient {
-  constructor(
-    private readonly config: ConnectionConfig,
-    private readonly fetchImpl: FetchLike = fetch,
-  ) {}
+  private readonly config: ConnectionConfig;
+  private readonly fetchImpl: FetchLike;
+
+  constructor(config: ConnectionConfig, fetchImpl: FetchLike = fetch) {
+    this.config = config;
+    this.fetchImpl = fetchImpl;
+  }
 
   private get baseUrl(): string {
     return `${this.config.host}${this.config.servicePath}`;

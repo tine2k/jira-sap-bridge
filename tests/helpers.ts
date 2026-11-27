@@ -1,5 +1,5 @@
-import type { AddEntryConfig, ConnectionConfig } from "../src/config.js";
-import type { FetchLike } from "../src/sap/client.js";
+import type { AddEntryConfig, ConnectionConfig } from "../src/config.ts";
+import type { FetchLike } from "../src/sap/client.ts";
 
 export function connection(overrides: Partial<ConnectionConfig> = {}): ConnectionConfig {
   return {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SapClient, SapRequestError, SapTransportError } from "../src/sap/client.js";
-import { connection, fakeFetch } from "./helpers.js";
+import { SapClient, SapRequestError, SapTransportError } from "../src/sap/client.ts";
+import { connection, fakeFetch } from "./helpers.ts";
 
 const payload = { Pernr: "4711", CATSHOURS: "7.5" };
 

@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { parseExportFilename, type ExportFilename } from "../jira/filename.js";
-import type { MonthRange } from "./month.js";
+import { parseExportFilename, type ExportFilename } from "../jira/filename.ts";
+import type { MonthRange } from "./month.ts";
 
 export interface DiscoveredExport extends ExportFilename {
   /** Absolute or directory-relative path to the export. */

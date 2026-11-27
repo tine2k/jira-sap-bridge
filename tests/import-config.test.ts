@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { test } from "node:test";
-import { expandHome, resolveExportDir } from "../src/import/config.js";
+import { expandHome, resolveExportDir } from "../src/import/config.ts";
 
 const HOME = "/home/tester";
 

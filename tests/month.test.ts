@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { defaultMonth, monthRange, previousMonth } from "../src/import/month.js";
+import { defaultMonth, monthRange, previousMonth } from "../src/import/month.ts";
 
 test("defaults to the previous month on days 1-10", () => {
   assert.deepEqual(defaultMonth({ year: 2026, month: 11, day: 1 }), { year: 2026, month: 10 });
