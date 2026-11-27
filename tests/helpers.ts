@@ -1,15 +1,14 @@
 import type { AddEntryConfig, ConnectionConfig } from "../src/config.js";
-import type { FetchLike } from "../src/sap/auth.js";
+import type { FetchLike } from "../src/sap/client.js";
 
 export function connection(overrides: Partial<ConnectionConfig> = {}): ConnectionConfig {
   return {
     host: "https://tenant.example",
     servicePath: "/sap/opu/odata/sap/HCM_CATS_MANAG_V1/",
-    authMode: "basic",
     timeoutMs: 5000,
-    user: "user",
-    password: "pass",
-    tokenPath: "/sap/bc/sec/oauth2/token",
+    browserProfileDir: ".sap-browser-profile",
+    browserLoginTimeoutMs: 300000,
+    sessionCookie: "SAP_SESSIONID_L54_100=test",
     ...overrides,
   };
 }

@@ -9,11 +9,20 @@ Small CLI with two operations against SAP CATS (`HCM_CATS_MANAG_V1`):
 
 ```bash
 npm install
+npx playwright install chromium
 cp .env.example .env
 ```
 
-Fill `.env` with the tenant URL, authentication, employee number, and entry
-defaults.
+Fill `.env` with the tenant URL and employee/entry defaults.
+
+## Authentication
+
+The script opens a Chromium window, you complete the tenant's SSO/MFA login,
+and the run continues with that session. No cookie is copied.
+
+The browser profile is kept in `.sap-browser-profile/` so the IdP session is
+reused between monthly runs; the script only asks you to log in again when the
+session has expired. Set `SAP_BROWSER_PROFILE` to use another directory.
 
 ## Commands
 
@@ -41,10 +50,8 @@ npm run timesheet -- read --json
 | Variable | Purpose |
 | --- | --- |
 | `S4_HOST` | Tenant base URL |
-| `S4_AUTH` | `session`, `basic`, or `oauth2` |
-| `S4_SESSION_COOKIE` | Browser cookie for session auth |
-| `S4_USER` / `S4_PASSWORD` | Basic auth credentials |
-| `S4_CLIENT_ID` / `S4_CLIENT_SECRET` | OAuth2 client credentials |
+| `SAP_BROWSER_PROFILE` | Browser profile directory (default `.sap-browser-profile`) |
+| `SAP_BROWSER_LOGIN_TIMEOUT_MS` | Login timeout (default 5 minutes) |
 | `EMPLOYEE_ID` | SAP personnel number (`Pernr`) |
 | `ENTRY_DATE` | Day to add, and default day to read |
 | `ENTRY_HOURS` | Hours for the created entry |

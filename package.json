@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "playwright": "^1.65.1"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

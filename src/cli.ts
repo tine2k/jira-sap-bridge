@@ -1,8 +1,7 @@
 import "dotenv/config";
-import { ConfigError, loadConfig, loadConnectionConfig, loadEmployeeConfig } from "./config.js";
+import { ConfigError, loadConfig, loadConnectionConfig, loadEmployeeConfig, type ConnectionConfig } from "./config.js";
 import { enumerateDates, parseCalendarDate, parseODataDate, validateCalendarDate } from "./date.js";
-import { redactBody } from "./log.js";
-import { AuthError } from "./sap/auth.js";
+import { BrowserAuthError, obtainSessionCookie } from "./sap/browser.js";
 import { SapClient, SapRequestError, SapTransportError, type TimeEntry } from "./sap/client.js";
 import { buildEntryPayload } from "./sap/entry.js";
 
@@ -87,9 +86,16 @@ function extractRecord(data: unknown): Record<string, unknown> {
   return {};
 }
 
+async function resolveSession(config: ConnectionConfig): Promise<ConnectionConfig> {
+  process.stderr.write("Opening browser for SAP login (complete the SSO/MFA prompt)...\n");
+  const cookie = await obtainSessionCookie(config);
+  return { ...config, sessionCookie: cookie };
+}
+
 async function runAdd(): Promise<number> {
   const config = loadConfig();
-  const client = new SapClient(config);
+  const connection = await resolveSession(config);
+  const client = new SapClient(connection);
   const result = await client.addEntry(buildEntryPayload(config));
   const record = extractRecord(result.data);
 
@@ -105,7 +111,7 @@ async function runAdd(): Promise<number> {
 }
 
 async function runRead(args: string[]): Promise<number> {
-  const connection = loadConnectionConfig();
+  const connection = await resolveSession(loadConnectionConfig());
   const { employeeId } = loadEmployeeConfig();
   const options = parseReadOptions(args);
   const dates = enumerateDates(options.from, options.to);
@@ -152,14 +158,11 @@ function reportError(error: unknown): void {
   if (error instanceof SapRequestError) {
     console.error(error.message);
     if (error.body.length > 0) {
-      const secrets = ["S4_PASSWORD", "S4_CLIENT_SECRET", "S4_SESSION_COOKIE", "S4_CSRF_TOKEN"]
-        .map((name) => process.env[name] ?? "")
-        .filter((value) => value.length > 0);
-      console.error(redactBody(error.body, secrets));
+      console.error(/^\s*<html/i.test(error.body) ? "SAP returned a login page; the session expired." : error.body);
     }
     return;
   }
-  if (error instanceof AuthError || error instanceof SapTransportError) {
+  if (error instanceof SapTransportError || error instanceof BrowserAuthError) {
     console.error(error.message);
     return;
   }

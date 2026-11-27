@@ -162,19 +162,24 @@ test("reports a read rejection", async () => {
   );
 });
 
+test("requires a browser session", async () => {
+  const client = new SapClient(connection({ sessionCookie: undefined }), fakeFetch([], []));
+  await assert.rejects(
+    () => client.readEntries("4711", "2026-11-02"),
+    /No SAP session/,
+  );
+});
+
 test("explains an unauthenticated SAML redirect", async () => {
   const fetchImpl = fakeFetch(
     [() => new Response(null, { status: 302, headers: { location: "https://idp.example/saml" } })],
     [],
   );
 
-  const client = new SapClient(
-    connection({ authMode: "session", sessionCookie: "SAP_SESSIONID=stale" }),
-    fetchImpl,
-  );
+  const client = new SapClient(connection(), fetchImpl);
 
   await assert.rejects(
     () => client.addEntry(payload),
-    /redirected the request .*S4_SESSION_COOKIE/,
+    /redirected the request .*log in again/,
   );
 });

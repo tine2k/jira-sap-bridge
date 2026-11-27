@@ -2,9 +2,47 @@
 
 ## Purpose
 
-Add and read SAP CATS time entries for a single employee through the tenant's OData service.
+Add and read SAP CATS time entries for a single employee through the tenant's OData service, authenticating interactively through a browser.
 
 ## Requirements
+
+### Requirement: Interactive authentication
+
+The tool SHALL open a real browser for the user to complete the tenant's SSO/MFA login, verify the resulting session against the service, and reuse it for the requested `add` or `read` operation. It SHALL NOT require a manually copied cookie.
+
+#### Scenario: First login succeeds
+
+- **WHEN** `add` or `read` runs and the user completes the SSO/MFA login
+- **THEN** the tool verifies the session against the service metadata and continues with the requested operation
+
+#### Scenario: Existing session is reused
+
+- **WHEN** the persistent browser profile still holds a valid session
+- **THEN** the tool proceeds without prompting for credentials
+
+#### Scenario: Login is not completed
+
+- **WHEN** the login is not completed within `SAP_BROWSER_LOGIN_TIMEOUT_MS` (default five minutes)
+- **THEN** the tool reports the timeout, exits non-zero, and performs no add or read
+
+#### Scenario: Browser is unavailable
+
+- **WHEN** Chromium cannot be launched
+- **THEN** the tool reports that Chromium must be installed with `npx playwright install chromium` and performs no add or read
+
+### Requirement: Browser session handling
+
+The tool SHALL use the authenticated session only in memory for the run and SHALL NOT write the session cookie to `.env` or any other project file. The only persisted login state SHALL be the browser profile, stored in `.sap-browser-profile` by default and overridable with `SAP_BROWSER_PROFILE`.
+
+#### Scenario: No cookie is written to the project
+
+- **WHEN** browser login completes
+- **THEN** no session cookie is written to a project file and the browser profile directory is gitignored
+
+#### Scenario: Custom profile location
+
+- **WHEN** `SAP_BROWSER_PROFILE` is set
+- **THEN** the tool stores and reuses the login state in that directory
 
 ### Requirement: Add a time entry
 
@@ -12,8 +50,8 @@ The tool SHALL create exactly one SAP time entry per invocation from the configu
 
 #### Scenario: Entry created
 
-- **WHEN** `add` runs with valid credentials and entry settings
-- **THEN** exactly one create request is sent and the generated Counter is reported
+- **WHEN** `add` runs with a valid session and complete entry settings
+- **THEN** exactly one entry is created and the generated Counter is reported
 
 #### Scenario: SAP rejects the entry
 

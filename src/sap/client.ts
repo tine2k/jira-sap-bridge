@@ -1,7 +1,8 @@
 import type { ConnectionConfig } from "../config.js";
-import { buildAuthHeaders, type FetchLike } from "./auth.js";
 
 const ENTITY_SET = "TimeEntryCollection";
+
+export type FetchLike = typeof fetch;
 
 export class SapRequestError extends Error {
   readonly status: number;
@@ -49,33 +50,34 @@ export class SapClient {
     return new URL(relative, this.baseUrl).toString();
   }
 
+  private cookieHeader(): string {
+    if (this.config.sessionCookie === undefined || this.config.sessionCookie === "") {
+      throw new SapTransportError("No SAP session. Complete the browser login first.");
+    }
+    return this.config.sessionCookie;
+  }
+
   /** Creates exactly one time entry. */
   async addEntry(payload: Record<string, unknown>): Promise<AddResult> {
     const headers: Record<string, string> = {
-      ...(await buildAuthHeaders(this.config, this.fetchImpl)),
+      Cookie: this.cookieHeader(),
       "Content-Type": "application/json",
       Accept: "application/json",
       DataServiceVersion: "2.0",
       MaxDataServiceVersion: "2.0",
       "X-Requested-With": "XMLHttpRequest",
     };
-    if (this.config.csrfToken !== undefined) {
-      headers["x-csrf-token"] = this.config.csrfToken;
-    }
 
     let response = await this.post(payload, headers);
     const csrfRequirement = response.headers.get("x-csrf-token");
 
     if (response.status === 403 && csrfRequirement !== null) {
-      const retryHeaders = { ...headers };
       const fetched = await this.fetchCsrfToken();
-      retryHeaders["x-csrf-token"] = fetched.token;
-      if (fetched.cookie !== undefined && fetched.cookie.length > 0) {
-        const existing = retryHeaders.Cookie;
-        retryHeaders.Cookie = existing !== undefined && existing.length > 0
-          ? `${existing}; ${fetched.cookie}`
-          : fetched.cookie;
-      }
+      const retryHeaders = {
+        ...headers,
+        "x-csrf-token": fetched.token,
+        ...(fetched.cookie !== undefined ? { Cookie: `${headers.Cookie}; ${fetched.cookie}` } : {}),
+      };
       response = await this.post(payload, retryHeaders);
     }
 
@@ -100,7 +102,7 @@ export class SapClient {
     const filter = `Pernr eq '${escapeODataString(employeeId)}' and WorkDate eq datetime'${date}T00:00:00'`;
     const relative = `${ENTITY_SET}?$filter=${encodeURIComponent(filter)}`;
     const headers = {
-      ...(await buildAuthHeaders(this.config, this.fetchImpl)),
+      Cookie: this.cookieHeader(),
       Accept: "application/json",
       "Cache-Control": "no-cache",
     };
@@ -154,7 +156,7 @@ export class SapClient {
 
   private async fetchCsrfToken(): Promise<{ token: string; cookie?: string }> {
     const headers = {
-      ...(await buildAuthHeaders(this.config, this.fetchImpl)),
+      Cookie: this.cookieHeader(),
       "x-csrf-token": "Fetch",
       Accept: "application/json",
     };
@@ -198,8 +200,8 @@ export class SapClient {
       return new SapRequestError(
         response.status,
         body,
-        `SAP redirected the request (HTTP ${response.status}); the session is probably not authenticated. ` +
-          "Refresh S4_SESSION_COOKIE from the browser or choose another S4_AUTH mode.",
+        `SAP redirected the request (HTTP ${response.status}); the session is no longer authenticated. ` +
+          "Re-run the command to log in again.",
       );
     }
     return new SapRequestError(response.status, body);

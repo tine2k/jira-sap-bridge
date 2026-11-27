@@ -1,11 +1,10 @@
 import { validateCalendarDate } from "./date";
 
-export type AuthMode = "basic" | "oauth2" | "session";
 export type Env = Record<string, string | undefined>;
 
 export const DEFAULT_SERVICE_PATH = "/sap/opu/odata/sap/HCM_CATS_MANAG_V1/";
-export const DEFAULT_TOKEN_PATH = "/sap/bc/sec/oauth2/token";
 export const DEFAULT_DATA_ENTRY_PROFILE = "S4H_EXT";
+export const DEFAULT_BROWSER_PROFILE = ".sap-browser-profile";
 
 export class ConfigError extends Error {
   readonly missing: string[];
@@ -20,15 +19,11 @@ export class ConfigError extends Error {
 export interface ConnectionConfig {
   host: string;
   servicePath: string;
-  authMode: AuthMode;
   timeoutMs: number;
-  user?: string;
-  password?: string;
-  clientId?: string;
-  clientSecret?: string;
-  tokenPath: string;
+  browserProfileDir: string;
+  browserLoginTimeoutMs: number;
+  /** Set after the interactive login; never read from the environment. */
   sessionCookie?: string;
-  csrfToken?: string;
 }
 
 export interface AddEntryConfig {
@@ -60,14 +55,10 @@ function requireValue(env: Env, name: string, missing: string[]): string {
   return value;
 }
 
-function isAuthMode(value: string): value is AuthMode {
-  return value === "basic" || value === "oauth2" || value === "session";
-}
-
-function parseTimeout(raw: string | undefined): number {
-  const value = Number(raw ?? "30000");
+function parsePositiveInt(raw: string | undefined, name: string, fallback: number): number {
+  const value = Number(raw ?? fallback);
   if (!Number.isInteger(value) || value <= 0) {
-    throw new ConfigError(`TIMEOUT_MS must be a positive integer, received "${raw ?? ""}"`);
+    throw new ConfigError(`${name} must be a positive integer, received "${raw ?? ""}"`);
   }
   return value;
 }
@@ -76,48 +67,23 @@ export function loadConnectionConfig(env: Env = process.env): ConnectionConfig {
   const missing: string[] = [];
   const host = requireValue(env, "S4_HOST", missing).replace(/\/+$/, "");
 
-  const authModeRaw = (read(env, "S4_AUTH") ?? "basic").toLowerCase();
-  if (!isAuthMode(authModeRaw)) {
-    throw new ConfigError(
-      `Unsupported S4_AUTH "${authModeRaw}". Expected "basic", "oauth2", or "session".`,
-    );
-  }
-
-  const servicePathRaw = read(env, "S4_SERVICE_PATH") ?? DEFAULT_SERVICE_PATH;
-  const servicePath = `/${servicePathRaw.replace(/^\/+|\/+$/g, "")}/`;
-
-  const connection: ConnectionConfig = {
-    host,
-    servicePath,
-    authMode: authModeRaw,
-    timeoutMs: parseTimeout(read(env, "TIMEOUT_MS")),
-    tokenPath: read(env, "S4_TOKEN_PATH") ?? DEFAULT_TOKEN_PATH,
-  };
-
-  switch (authModeRaw) {
-    case "basic":
-      connection.user = requireValue(env, "S4_USER", missing);
-      connection.password = requireValue(env, "S4_PASSWORD", missing);
-      break;
-    case "oauth2":
-      connection.clientId = requireValue(env, "S4_CLIENT_ID", missing);
-      connection.clientSecret = requireValue(env, "S4_CLIENT_SECRET", missing);
-      break;
-    case "session": {
-      connection.sessionCookie = requireValue(env, "S4_SESSION_COOKIE", missing);
-      const csrfToken = read(env, "S4_CSRF_TOKEN");
-      if (csrfToken !== undefined) {
-        connection.csrfToken = csrfToken;
-      }
-      break;
-    }
-  }
-
   if (missing.length > 0) {
     throw new ConfigError(`Missing required configuration: ${missing.join(", ")}`, missing);
   }
 
-  return connection;
+  const servicePathRaw = read(env, "S4_SERVICE_PATH") ?? DEFAULT_SERVICE_PATH;
+
+  return {
+    host,
+    servicePath: `/${servicePathRaw.replace(/^\/+|\/+$/g, "")}/`,
+    timeoutMs: parsePositiveInt(read(env, "TIMEOUT_MS"), "TIMEOUT_MS", 30000),
+    browserProfileDir: read(env, "SAP_BROWSER_PROFILE") ?? DEFAULT_BROWSER_PROFILE,
+    browserLoginTimeoutMs: parsePositiveInt(
+      read(env, "SAP_BROWSER_LOGIN_TIMEOUT_MS"),
+      "SAP_BROWSER_LOGIN_TIMEOUT_MS",
+      300000,
+    ),
+  };
 }
 
 export function loadEmployeeConfig(env: Env = process.env): { employeeId: string } {

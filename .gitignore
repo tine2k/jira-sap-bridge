@@ -5,6 +5,7 @@ logs/
 .env.local
 *.log
 .DS_Store
+.sap-browser-profile/
 
 # Real timesheets and captured credentials should never be committed
 data/*.csv

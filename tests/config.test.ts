@@ -10,9 +10,6 @@ import {
 
 const complete: Record<string, string> = {
   S4_HOST: "https://tenant.example",
-  S4_AUTH: "basic",
-  S4_USER: "communication-user",
-  S4_PASSWORD: "secret",
   EMPLOYEE_ID: "4711",
   ENTRY_DATE: "2026-11-24",
   ENTRY_HOURS: "7.5",
@@ -61,22 +58,18 @@ test("rejects invalid calendar dates", () => {
   );
 });
 
-test("rejects unknown auth modes", () => {
-  assert.throws(
-    () => loadConnectionConfig({ ...complete, S4_AUTH: "kerberos" }),
-    /Unsupported S4_AUTH/,
-  );
-});
+test("configures the browser login defaults", () => {
+  const config = loadConnectionConfig(complete);
+  assert.equal(config.browserProfileDir, ".sap-browser-profile");
+  assert.equal(config.browserLoginTimeoutMs, 300000);
 
-test("requires auth-specific settings", () => {
-  assert.throws(
-    () => loadConnectionConfig({ ...complete, S4_AUTH: "oauth2" }),
-    /S4_CLIENT_ID, S4_CLIENT_SECRET/,
-  );
-  assert.throws(
-    () => loadConnectionConfig({ ...complete, S4_AUTH: "session" }),
-    /S4_SESSION_COOKIE/,
-  );
+  const custom = loadConnectionConfig({
+    ...complete,
+    SAP_BROWSER_PROFILE: "/tmp/sap-profile",
+    SAP_BROWSER_LOGIN_TIMEOUT_MS: "60000",
+  });
+  assert.equal(custom.browserProfileDir, "/tmp/sap-profile");
+  assert.equal(custom.browserLoginTimeoutMs, 60000);
 });
 
 test("parses accounting assignment JSON and rejects non-objects", () => {
