@@ -43,6 +43,23 @@ test("handles a BOM and CRLF line endings", () => {
   assert.equal(result.rows[0]?.minutes, 180);
 });
 
+test("aggregates month-first and ISO work dates on the same day", () => {
+  const content = [
+    HEADER,
+    "DEMO-1,Demo,3,11/26/26 0:00,1126,Daily",
+    "DEMO-2,Demo,1.5,2026-11-26 00:00,1126,Planning",
+  ].join("\n");
+  const result = parseExport(content, NOVEMBER);
+  assert.equal(result.warnings.length, 0);
+  assert.deepEqual(
+    result.rows.map((row) => [row.workDate, row.minutes]),
+    [
+      ["2026-11-26", 180],
+      ["2026-11-26", 90],
+    ],
+  );
+});
+
 test("accepts normalized header casing", () => {
   const content = "issue key,hours,work date\nDEMO-1,3,11/2/26\n";
   const result = parseExport(content, NOVEMBER);

@@ -50,6 +50,28 @@ test("accepts a four-digit year", () => {
   });
 });
 
+test("parses an ISO work date as written", () => {
+  assert.deepEqual(parseWorkDate("2026-11-26 00:00", NOVEMBER, "1126"), {
+    ok: true,
+    date: "2026-11-26",
+    outsideSelectedMonth: false,
+  });
+});
+
+test("flags an ISO work date outside the selected month", () => {
+  assert.deepEqual(parseWorkDate("2026-12-01 00:00", NOVEMBER), {
+    ok: true,
+    date: "2026-12-01",
+    outsideSelectedMonth: true,
+  });
+});
+
+test("rejects invalid ISO work dates", () => {
+  assert.equal(parseWorkDate("2026-13-01 00:00", NOVEMBER).ok, false);
+  assert.equal(parseWorkDate("2026-02-30", NOVEMBER).ok, false);
+  assert.equal(parseWorkDate("2026-11-02 25:00", NOVEMBER).ok, false);
+});
+
 test("parses decimal hours into minutes", () => {
   assert.deepEqual(parseHours("3"), { ok: true, minutes: 180 });
   assert.deepEqual(parseHours("1.5"), { ok: true, minutes: 90 });

@@ -55,6 +55,42 @@ test("with no export file, reports the download prompt, shows no picker, and pro
   assert.deepEqual(outro.mock.calls[0]?.arguments, ["Nothing to preview."]);
 });
 
+test("greets the user by first name before the picker opens", async () => {
+  let greetingsAtPicker = -1;
+  const { ui, log } = fakeUi(() => {
+    greetingsAtPicker = log.message.mock.callCount();
+    return join(SAMPLE_DIR, SAMPLE_FILE);
+  });
+
+  await runImport(TODAY, SAMPLE_DIR, ui, () => {});
+
+  assert.equal(greetingsAtPicker, 1);
+  assert.equal(log.message.mock.calls[0]?.arguments[0], "Hi Martin \u{1F44B}");
+});
+
+test("greets from the default export, not the first offered file", async (t) => {
+  const dir = await emptyDir(t);
+  const header = "Issue Key,Hours,Work date\n";
+  await writeFile(join(dir, "User_ Zoe Lang_2026-10-01_2026-10-31.csv"), header);
+  await writeFile(join(dir, "User_ Adam Muster-Lang_2026-11-01_2026-11-30.csv"), header);
+  const { ui, log } = fakeUi((options) => options.options[0]?.value ?? "");
+
+  await runImport(TODAY, dir, ui, () => {});
+
+  assert.equal(log.message.mock.calls[0]?.arguments[0], "Hi Muster-Lang \u{1F44B}");
+});
+
+test("shows no greeting when no export exists", async (t) => {
+  const dir = await emptyDir(t);
+  const { ui, log } = fakeUi(() => {
+    throw new Error("picker must not open");
+  });
+
+  await runImport(TODAY, dir, ui, () => {});
+
+  assert.equal(log.message.mock.callCount(), 0);
+});
+
 test("with the sample export, offers only that file as month and filename and previews it", async () => {
   let offered: SelectOptions | undefined;
   const written: string[] = [];

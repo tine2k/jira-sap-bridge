@@ -15,6 +15,9 @@ export type HoursParse = { ok: true; minutes: number } | { ok: false; error: str
 const WORK_DATE_PATTERN =
   /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})(?:[ T](\d{1,2}):(\d{2})(?::\d{2})?)?$/;
 
+const ISO_WORK_DATE_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2})?)?$/;
+
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
@@ -49,9 +52,23 @@ export function parseWorkDate(
   selected: SelectedMonth,
   periodRaw = "",
 ): WorkDateParse {
+  const isoMatch = ISO_WORK_DATE_PATTERN.exec(raw.trim());
+  if (isoMatch !== null) {
+    const hourRaw = isoMatch[4];
+    if (hourRaw !== undefined && (Number(hourRaw) > 23 || Number(isoMatch[5]) > 59)) {
+      return { ok: false, error: `Work date "${raw}" has an invalid time.` };
+    }
+    const date = buildDate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+    if (date === null) {
+      return { ok: false, error: `Work date "${raw}" is not a real calendar date.` };
+    }
+    const selectedPrefix = `${selected.year}-${pad2(selected.month)}-`;
+    return { ok: true, date, outsideSelectedMonth: !date.startsWith(selectedPrefix) };
+  }
+
   const match = WORK_DATE_PATTERN.exec(raw.trim());
   if (match === null) {
-    return { ok: false, error: `Work date "${raw}" is not in M/D/YY format.` };
+    return { ok: false, error: `Work date "${raw}" is not in M/D/YY or YYYY-MM-DD format.` };
   }
 
   const first = Number(match[1]);

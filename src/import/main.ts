@@ -2,6 +2,7 @@ import "dotenv/config";
 import * as p from "@clack/prompts";
 import { pathToFileURL } from "node:url";
 import { ExportParseError, readExport } from "../jira/csv.ts";
+import { firstNameFromName } from "../jira/filename.ts";
 import { buildPreview, formatMonthLabel } from "../jira/preview.ts";
 import { resolveExportDir } from "./config.ts";
 import { ExportDiscoveryError, listExports, type DiscoveredExport } from "./discover.ts";
@@ -30,16 +31,24 @@ function yearMonthOf(file: DiscoveredExport): YearMonth {
 
 export type Ui = Pick<typeof p, "intro" | "outro" | "cancel" | "select" | "isCancel" | "spinner" | "log">;
 
+function defaultExport(
+  offered: ReadonlyArray<DiscoveredExport>,
+  today: CalendarDay,
+): DiscoveredExport | undefined {
+  const preferred = pickDefaultMonth(offered.map(yearMonthOf), today);
+  return (
+    offered.find(
+      (file) => preferred !== null && monthValue(yearMonthOf(file)) === monthValue(preferred),
+    ) ?? offered[0]
+  );
+}
+
 async function chooseExport(
   offered: ReadonlyArray<DiscoveredExport>,
   today: CalendarDay,
   ui: Ui,
 ): Promise<DiscoveredExport | null> {
-  const preferred = pickDefaultMonth(offered.map(yearMonthOf), today);
-  const initial =
-    offered.find(
-      (file) => preferred !== null && monthValue(yearMonthOf(file)) === monthValue(preferred),
-    ) ?? offered[0];
+  const initial = defaultExport(offered, today);
   const selected = await ui.select({
     message: "Which export are you filing?",
     options: offered.map((file) => ({
@@ -74,6 +83,11 @@ export async function runImport(
     );
     ui.outro("Nothing to preview.");
     return EXIT_ERROR;
+  }
+
+  const greeted = defaultExport(offered, today);
+  if (greeted !== undefined) {
+    ui.log.message(`Hi ${firstNameFromName(greeted.name)} \u{1F44B}`);
   }
 
   const file = await chooseExport(offered, today, ui);

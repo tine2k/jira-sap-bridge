@@ -61,6 +61,8 @@ $ JIRA_EXPORT_DIR=csv-sample npm run import
 
 ┌  Jira hours -> SAP preview
 │
+│  Hi Anna 👋
+│
 ◆  Which export are you filing?
 │  ● November 2026 (User_ Muster-Lang Anna_2026-11-01_2026-11-30.csv)
 │  ○ October 2026 (User_ Muster-Lang Anna_2026-10-01_2026-10-31.csv)
