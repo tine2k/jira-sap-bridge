@@ -16,5 +16,5 @@
 ## 3. Verification
 
 - [x] 3.1 Run `npm run typecheck` and `npm test`; both must pass.
-- [ ] 3.2 Run `JIRA_EXPORT_DIR=csv-sample npm run import` in a terminal and confirm the greeting appears on startup and the sample preview shows no warnings.
+- [x] 3.2 Run `JIRA_EXPORT_DIR=csv-sample npm run import` in a terminal and confirm the greeting appears on startup and the sample preview shows no warnings.
 - [x] 3.3 Update the README import section if the startup transcript changes.
