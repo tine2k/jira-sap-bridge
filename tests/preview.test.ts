@@ -51,7 +51,7 @@ test("builds month totals from the sample-shaped export", () => {
       ["2026-11-03", "9", 4],
     ],
   );
-  assert.ok(preview.warnings.some((warning) => warning.kind === "long-day"));
+  assert.ok(!preview.warnings.some((warning) => warning.kind === "long-day"));
 });
 
 test("reports no warnings for ordinary in-month days", () => {
@@ -77,11 +77,27 @@ test("flags weekend work", () => {
   assert.ok(preview.warnings.some((warning) => warning.kind === "weekend"));
 });
 
+test("warns only for days above twelve hours", () => {
+  const atThreshold = buildPreview({
+    range: RANGE,
+    filenameName: "Doe Jane",
+    rows: [row({ workDate: "2026-11-02", minutes: 12 * 60 })],
+  });
+  assert.ok(!atThreshold.warnings.some((warning) => warning.kind === "long-day"));
+
+  const aboveThreshold = buildPreview({
+    range: RANGE,
+    filenameName: "Doe Jane",
+    rows: [row({ workDate: "2026-11-02", minutes: 12 * 60 + 1 })],
+  });
+  assert.ok(aboveThreshold.warnings.some((warning) => warning.kind === "long-day"));
+});
+
 test("distinguishes a long day from an impossible day", () => {
   const longDay = buildPreview({
     range: RANGE,
     filenameName: "Doe Jane",
-    rows: [row({ workDate: "2026-11-02", minutes: 9 * 60 })],
+    rows: [row({ workDate: "2026-11-02", minutes: 13 * 60 })],
   });
   assert.ok(longDay.warnings.some((warning) => warning.kind === "long-day"));
   assert.ok(!longDay.warnings.some((warning) => warning.kind === "invalid-day"));

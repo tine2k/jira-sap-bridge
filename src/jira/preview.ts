@@ -41,6 +41,8 @@ export interface PreviewInput {
   rowWarnings?: RowWarning[];
 }
 
+export const LONG_DAY_MINUTES = 12 * 60;
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
   "January",
@@ -139,11 +141,11 @@ export function buildPreview(input: PreviewInput): Preview {
         date: day.date,
         message: `${day.date} totals ${day.hours} h, which exceeds 24 h and cannot be a single SAP entry.`,
       });
-    } else if (day.minutes > 8 * 60) {
+    } else if (day.minutes > LONG_DAY_MINUTES) {
       warnings.push({
         kind: "long-day",
         date: day.date,
-        message: `${day.date} totals ${day.hours} h, above a normal 8 h day.`,
+        message: `${day.date} totals ${day.hours} h, above a normal ${formatHoursFromMinutes(LONG_DAY_MINUTES)} h day.`,
       });
     }
     if (day.truncatedKeys.length > 0) {

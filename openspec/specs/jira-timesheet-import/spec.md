@@ -161,7 +161,7 @@ Before any SAP interaction, the tool SHALL display a per-day table containing th
 
 ### Requirement: Preview warnings
 
-The preview SHALL warn about weekend entries, days above eight hours, days above twenty-four hours, work dates outside the selected month, identity mismatch, period mismatch, and description truncation.
+The preview SHALL warn about weekend entries, days above twelve hours, days above twenty-four hours, work dates outside the selected month, identity mismatch, period mismatch, and description truncation.
 
 #### Scenario: Weekend entry
 
@@ -170,7 +170,7 @@ The preview SHALL warn about weekend entries, days above eight hours, days above
 
 #### Scenario: Long day
 
-- **WHEN** a day totals more than eight hours
+- **WHEN** a day totals more than twelve hours
 - **THEN** the preview flags that day as longer than a normal working day
 
 #### Scenario: Day above twenty-four hours

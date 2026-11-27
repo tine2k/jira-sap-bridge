@@ -5,6 +5,7 @@ import {
   formatDayLabel,
   formatMonthLabel,
   isWeekend,
+  LONG_DAY_MINUTES,
   type Preview,
 } from "../jira/preview.ts";
 
@@ -19,7 +20,7 @@ function dayColor(colors: Colors, day: DayEntry): (value: string) => string {
   if (day.minutes > 24 * 60) {
     return colors.red;
   }
-  if (day.minutes > 8 * 60) {
+  if (day.minutes > LONG_DAY_MINUTES) {
     return colors.yellow;
   }
   if (isWeekend(day.date)) {

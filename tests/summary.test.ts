@@ -35,6 +35,7 @@ function preview() {
       row({ issueKey: "DEMO-1", workDate: "2026-11-03", minutes: 30 }),
       row({ issueKey: "DEMO-6", workDate: "2026-11-03", minutes: 120 }),
       row({ issueKey: "DEMO-3", workDate: "2026-11-03", minutes: 270 }),
+      row({ issueKey: "DEMO-7", workDate: "2026-11-02", minutes: 6 * 60 }),
     ],
   });
 }
@@ -45,10 +46,10 @@ test("renders the greeting, day rows, total, and warnings", () => {
   assert.match(text, /November 2026/);
   assert.match(text, /Mon 02 Nov/);
   assert.match(text, /Tue 03 Nov/);
-  assert.match(text, /16 h total/);
+  assert.match(text, /22 h total/);
   assert.match(text, /TOTAL/);
   assert.match(text, /Warnings/);
-  assert.match(text, /above a normal 8 h day/);
+  assert.match(text, /above a normal 12 h day/);
 });
 
 test("emits ANSI color when enabled", () => {
