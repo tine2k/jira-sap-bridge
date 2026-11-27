@@ -1,5 +1,6 @@
 import Table from "cli-table3";
 import pc from "picocolors";
+import { parseCalendarDate } from "../date.ts";
 import type { DayEntry } from "../jira/aggregate.ts";
 import {
   formatDayLabel,
@@ -21,11 +22,38 @@ const MIN_DESCRIPTION_WIDTH = 30;
 const FALLBACK_WIDTH = 80;
 /** cli-table3 draws one vertical border per column plus one on the outer edge. */
 const TABLE_BORDER_WIDTH = 5;
+const CELL_PADDING = 2;
+const DAY_MS = 86_400_000;
+
+interface IsoWeek {
+  year: number;
+  week: number;
+}
+
+/** Returns the ISO 8601 week-year and week number for a calendar date. */
+function isoWeek(date: string): IsoWeek | null {
+  const parsed = parseCalendarDate(date);
+  if (parsed === null) {
+    return null;
+  }
+
+  const thursday = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
+  const weekday = thursday.getUTCDay() || 7;
+  thursday.setUTCDate(thursday.getUTCDate() + 4 - weekday);
+
+  const year = thursday.getUTCFullYear();
+  const yearStart = Date.UTC(year, 0, 1);
+  const week = Math.ceil(((thursday.getTime() - yearStart) / DAY_MS + 1) / 7);
+  return { year, week };
+}
+
+function sameIsoWeek(left: IsoWeek, right: IsoWeek): boolean {
+  return left.year === right.year && left.week === right.week;
+}
 
 function descriptionWidth(longest: number, tableWidth: number): number {
   const fixed = FIXED_COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
   const available = tableWidth - fixed - TABLE_BORDER_WIDTH;
-  const CELL_PADDING = 2;
   return Math.max(
     Math.min(longest + CELL_PADDING, available),
     Math.min(longest + CELL_PADDING, MIN_DESCRIPTION_WIDTH),
@@ -59,6 +87,15 @@ function colorCell(cell: string, color: (value: string) => string): string {
   return `${leading}${body.length > 0 ? color(body) : body}${trailing}`;
 }
 
+/** A spanning cell's drawable width includes the internal borders it replaces. */
+function weekMarkerContent(week: number, colWidths: number[], colors: Colors): string {
+  const contentWidth =
+    colWidths.reduce((sum, width) => sum + width, 0) + colWidths.length - 1 - CELL_PADDING;
+  const title = `Week ${week}`;
+  const remaining = Math.max(0, contentWidth - title.length);
+  return `${colors.bold(colors.cyan(title))}${" ".repeat(remaining)}`;
+}
+
 export function renderSummary(preview: Preview, options: RenderSummaryOptions = {}): string {
   const colors = pc.createColors(options.color ?? Boolean(process.stdout.isTTY));
   const dayCount = preview.days.length;
@@ -85,15 +122,29 @@ export function renderSummary(preview: Preview, options: RenderSummaryOptions = 
     options.width ??
     (typeof process.stdout.columns === "number" ? process.stdout.columns : FALLBACK_WIDTH);
 
+  const colWidths = [...FIXED_COLUMN_WIDTHS, descriptionWidth(longestDescription, tableWidth)];
   const table = new Table({
     head: ["Day", "Hours", "Items", "Description"],
-    colWidths: [...FIXED_COLUMN_WIDTHS, descriptionWidth(longestDescription, tableWidth)],
+    colWidths,
     wordWrap: true,
     style: { head: [], border: [] },
   });
 
+  let previousWeek: IsoWeek | null = null;
   for (const day of preview.days) {
+    const week = isoWeek(day.date);
+    if (week !== null && (previousWeek === null || !sameIsoWeek(previousWeek, week))) {
+      table.push([
+        {
+          colSpan: 4,
+          content: weekMarkerContent(week.week, colWidths, colors),
+          wordWrap: false,
+        },
+      ]);
+    }
+
     table.push([formatDayLabel(day.date), `${day.hours} h`, String(day.entryCount), day.note]);
+    previousWeek = week;
   }
   table.push(["TOTAL", `${preview.totalHours} h`, String(preview.entryCount), totalNote]);
 
