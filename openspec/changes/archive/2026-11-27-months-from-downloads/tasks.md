@@ -25,4 +25,4 @@
 ## 5. Verification
 
 - [x] 5.1 Run `npm test` and `npx tsc --noEmit`
-- [ ] 5.2 Manually run `JIRA_EXPORT_DIR=csv-sample npm run import` and confirm only November 2026 is offered
+- [x] 5.2 Manually run `JIRA_EXPORT_DIR=csv-sample npm run import` and confirm only November 2026 is offered
