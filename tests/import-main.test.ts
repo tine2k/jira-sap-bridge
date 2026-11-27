@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock, test } from "node:test";
+import { ConfigError } from "../src/config.ts";
 import { runImport, type Ui } from "../src/import/main.ts";
+import type { SapComparison } from "../src/import/sap-compare.ts";
+import { BrowserAuthError } from "../src/sap/browser.ts";
+import { SapRequestError, SapTransportError } from "../src/sap/client.ts";
 
 const TODAY = { year: 2026, month: 11, day: 27 };
 const SAMPLE_DIR = fileURLToPath(new URL("../csv-sample", import.meta.url));
@@ -14,8 +18,9 @@ const EXIT_ERROR = 1;
 
 type SelectOptions = { options: Array<{ value: string; label: string }>; initialValue?: string };
 
-function fakeUi(choose: (options: SelectOptions) => string) {
+function fakeUi(choose: (options: SelectOptions) => string, confirmed = false, cancelled = false) {
   const select = mock.fn(async (options: SelectOptions) => choose(options));
+  const confirm = mock.fn(async () => confirmed);
   const log = { error: mock.fn(), info: mock.fn(), message: mock.fn(), warn: mock.fn() };
   const outro = mock.fn();
   const ui = {
@@ -23,11 +28,12 @@ function fakeUi(choose: (options: SelectOptions) => string) {
     outro,
     cancel: mock.fn(),
     select,
-    isCancel: () => false,
+    confirm,
+    isCancel: (value: unknown) => cancelled && typeof value === "boolean",
     spinner: () => ({ start: mock.fn(), stop: mock.fn() }),
     log,
   };
-  return { ui: ui as unknown as Ui, select, outro, log };
+  return { ui: ui as unknown as Ui, select, confirm, outro, log };
 }
 
 async function emptyDir(t: { after: (fn: () => Promise<void>) => void }): Promise<string> {
@@ -111,3 +117,112 @@ test("with the sample export, offers only that file as month and filename and pr
   assert.match(written[0] ?? "", /November 2026/);
   assert.deepEqual(outro.mock.calls[0]?.arguments, ["Preview only. Nothing was sent to SAP."]);
 });
+
+const COMPARISON: SapComparison = {
+  recordedHours: "4",
+  recordedEntries: 1,
+  plannedHours: "16",
+  plannedEntries: 8,
+};
+
+test("declining the comparison keeps the preview-only exit and skips SAP", async () => {
+  const written: string[] = [];
+  let compared = 0;
+  const { ui, confirm, outro } = fakeUi((options) => options.options[0]?.value ?? "", false);
+
+  const code = await runImport(TODAY, SAMPLE_DIR, ui, (text) => written.push(text), {
+    compare: async () => {
+      compared += 1;
+      return COMPARISON;
+    },
+  });
+
+  assert.equal(code, EXIT_OK);
+  assert.equal(confirm.mock.callCount(), 1);
+  assert.equal(compared, 0);
+  assert.equal(written.length, 1);
+  assert.deepEqual(outro.mock.calls.at(-1)?.arguments, ["Preview only. Nothing was sent to SAP."]);
+});
+
+test("a cancelled comparison prompt keeps the preview-only exit and skips SAP", async () => {
+  const written: string[] = [];
+  let compared = 0;
+  const { ui, outro } = fakeUi((options) => options.options[0]?.value ?? "", true, true);
+
+  const code = await runImport(TODAY, SAMPLE_DIR, ui, (text) => written.push(text), {
+    compare: async () => {
+      compared += 1;
+      return COMPARISON;
+    },
+  });
+
+  assert.equal(code, EXIT_OK);
+  assert.equal(compared, 0);
+  assert.equal(written.length, 1);
+  assert.deepEqual(outro.mock.calls.at(-1)?.arguments, ["Preview only. Nothing was sent to SAP."]);
+});
+
+test("a confirmed comparison prints recorded and planned hours", async () => {
+  const written: string[] = [];
+  const { ui, outro } = fakeUi((options) => options.options[0]?.value ?? "", true);
+
+  const code = await runImport(TODAY, SAMPLE_DIR, ui, (text) => written.push(text), {
+    compare: async () => COMPARISON,
+  });
+
+  assert.equal(code, EXIT_OK);
+  assert.equal(written.length, 2);
+  assert.match(written[1] ?? "", /SAP recorded: 4 h across 1 entry/);
+  assert.match(written[1] ?? "", /Import would insert: 16 h across 8 entries/);
+  assert.deepEqual(outro.mock.calls.at(-1)?.arguments, [
+    "Comparison only. Nothing was written to SAP.",
+  ]);
+});
+
+test("a month without SAP entries reports zero recorded hours", async () => {
+  const written: string[] = [];
+  const { ui } = fakeUi((options) => options.options[0]?.value ?? "", true);
+
+  const code = await runImport(TODAY, SAMPLE_DIR, ui, (text) => written.push(text), {
+    compare: async () => ({
+      recordedHours: "0",
+      recordedEntries: 0,
+      plannedHours: "16",
+      plannedEntries: 8,
+    }),
+  });
+
+  assert.equal(code, EXIT_OK);
+  assert.match(written[1] ?? "", /SAP recorded: 0 h across 0 entries/);
+  assert.match(written[1] ?? "", /Import would insert: 16 h across 8 entries/);
+});
+
+const SAP_ERRORS: Array<[Error, RegExp]> = [
+  [
+    new ConfigError("Missing required configuration: EMPLOYEE_ID", ["EMPLOYEE_ID"]),
+    /^Configuration error: Missing required configuration: EMPLOYEE_ID$/,
+  ],
+  [new BrowserAuthError("Login was not completed within 300 seconds."), /^Login was not completed/],
+  [new SapTransportError("SAP GET failed: fetch failed"), /^SAP GET failed/],
+  [new SapRequestError(500, "boom"), /^SAP request failed with HTTP 500$/],
+  [new SapRequestError(401, "<html>login</html>"), /SAP returned a login page; the session expired/],
+];
+
+for (const [error, pattern] of SAP_ERRORS) {
+  test(`reports ${error.name} from the SAP comparison`, async () => {
+    const { ui, log } = fakeUi((options) => options.options[0]?.value ?? "", true);
+
+    const code = await runImport(TODAY, SAMPLE_DIR, ui, () => {}, {
+      compare: async () => {
+        throw error;
+      },
+    });
+
+    assert.equal(code, EXIT_ERROR);
+    const messages = log.error.mock.calls.map((call) => String(call.arguments[0]));
+    assert.ok(
+      messages.some((message) => pattern.test(message)),
+      `expected ${JSON.stringify(messages)} to match ${pattern}`,
+    );
+  });
+}

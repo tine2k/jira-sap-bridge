@@ -1,12 +1,16 @@
 import "dotenv/config";
 import * as p from "@clack/prompts";
 import { pathToFileURL } from "node:url";
+import { ConfigError } from "../config.ts";
 import { ExportParseError, readExport } from "../jira/csv.ts";
 import { firstNameFromName } from "../jira/filename.ts";
 import { buildPreview, formatMonthLabel } from "../jira/preview.ts";
+import { BrowserAuthError } from "../sap/browser.ts";
+import { SapRequestError, SapTransportError } from "../sap/client.ts";
 import { resolveExportDir } from "./config.ts";
 import { ExportDiscoveryError, listExports, type DiscoveredExport } from "./discover.ts";
 import { monthRange, pickDefaultMonth, type CalendarDay, type YearMonth } from "./month.ts";
+import { compareMonth, renderComparison, type SapComparison } from "./sap-compare.ts";
 import { renderSummary } from "./summary.ts";
 
 const EXIT_OK = 0;
@@ -29,7 +33,37 @@ function yearMonthOf(file: DiscoveredExport): YearMonth {
   return { year: Number(file.from.slice(0, 4)), month: Number(file.from.slice(5, 7)) };
 }
 
-export type Ui = Pick<typeof p, "intro" | "outro" | "cancel" | "select" | "isCancel" | "spinner" | "log">;
+export type Ui = Pick<
+  typeof p,
+  "intro" | "outro" | "cancel" | "select" | "isCancel" | "spinner" | "log" | "confirm"
+>;
+
+export interface ImportDependencies {
+  /** Replaces the SAP comparison in tests; defaults to the real browser flow. */
+  compare?: typeof compareMonth;
+}
+
+/** Mirrors the `timesheet` CLI's wording for SAP failures. */
+function reportSapError(error: unknown, ui: Ui): void {
+  if (error instanceof ConfigError) {
+    ui.log.error(`Configuration error: ${error.message}`);
+    return;
+  }
+  if (error instanceof SapRequestError) {
+    ui.log.error(error.message);
+    if (error.body.length > 0) {
+      ui.log.error(
+        /^\s*<html/i.test(error.body) ? "SAP returned a login page; the session expired." : error.body,
+      );
+    }
+    return;
+  }
+  if (error instanceof SapTransportError || error instanceof BrowserAuthError) {
+    ui.log.error(error.message);
+    return;
+  }
+  throw error;
+}
 
 function defaultExport(
   offered: ReadonlyArray<DiscoveredExport>,
@@ -70,6 +104,7 @@ export async function runImport(
   directory: string,
   ui: Ui = p,
   write: (text: string) => void = (text) => process.stdout.write(text),
+  deps: ImportDependencies = {},
 ): Promise<number> {
   ui.intro("Jira hours -> SAP preview");
 
@@ -111,7 +146,35 @@ export async function runImport(
   });
 
   write(`\n${renderSummary(preview, { color: Boolean(process.stdout.isTTY) })}\n\n`);
-  ui.outro("Preview only. Nothing was sent to SAP.");
+
+  const proceed = await ui.confirm({
+    message: "Compare with SAP?",
+    initialValue: false,
+  });
+
+  if (ui.isCancel(proceed) || proceed !== true) {
+    ui.outro("Preview only. Nothing was sent to SAP.");
+    return EXIT_OK;
+  }
+
+  const compare = deps.compare ?? compareMonth;
+  const sapSpinner = ui.spinner();
+  sapSpinner.start("Reading SAP");
+  let comparison: SapComparison;
+  try {
+    comparison = await compare(range, {
+      hours: preview.totalHours,
+      entries: preview.entryCount,
+    });
+  } catch (error) {
+    sapSpinner.stop("SAP read failed.");
+    reportSapError(error, ui);
+    return EXIT_ERROR;
+  }
+  sapSpinner.stop(`Read ${comparison.recordedEntries} SAP entries.`);
+
+  write(`${renderComparison(comparison, { color: Boolean(process.stdout.isTTY) })}\n\n`);
+  ui.outro("Comparison only. Nothing was written to SAP.");
   return EXIT_OK;
 }
 
